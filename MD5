@@ -1,0 +1,13 @@
+a10dc416257851e9fd8c0dfc7ef64dcc *DESCRIPTION
+bf4b21e2a8c3425d416161f017c96958 *NAMESPACE
+125a700de93994702688cb556b2472b4 *R/bugs.options.R
+3508c0ec4957fc7e75596d2e3b0f2630 *R/iBUGS.R
+57b66d1955977b974462a222da2c06b7 *R/zzz.R
+455904f5cb25ebaefbc77dc255112461 *inst/doc/figure/main-interface.png
+ad51398de3720a5544dd51e8cc3c4faa *inst/doc/figure/preference.png
+8986d3a49c9e6128bf8ba814dab1c456 *inst/doc/iBUGS.bib
+09b14961c61e13598dee52ff3a7deaba *inst/doc/iBUGS.lyx
+6c729604af040255f5b60e47a903096d *inst/doc/iBUGS.pdf
+e526b477b3ed7cc1ab9994cabaaabe44 *inst/doc/index.html
+7c267e71b0d77ec97bb06f08812dc79d *man/bugs.options.Rd
+a83d992d08ed441547d1aa6f40b6575d *man/iBUGS.Rd
