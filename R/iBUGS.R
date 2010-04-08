@@ -1,10 +1,50 @@
-iBUGS <- function() {
+#' An Intelligent Interface to WinBUGS/OpenBUGS
+#' 
+#' Create a GUI by \pkg{gWidgetsRGtk2} and all options for \pkg{R2WinBUGS} can
+#' be set in the GUI. The letter \sQuote{i} can be interpreted as
+#' \sQuote{\bold{i}ntelligent} or \sQuote{\bold{i}nterface} -- depends on what
+#' you think.
+#' 
+#' \pkg{iBUGS} will try to find the directories of WinBUGS/OpenBUGS in your
+#' system and use them when calling \code{\link[R2WinBUGS]{bugs}} in
+#' \pkg{R2WinBUGS}. For most Windows users, this search will succeed, unless
+#' WinBUGS/OpenBUGS were not installed in the default directory.
+#' 
+#' \pkg{iBUGS} will also try to get the data object names from the current R
+#' session and guess the parameter names in a BUGS model. Click the
+#' \dQuote{Preference} button and you will see the lists of names. If it failed
+#' to figure out all the parameter names, you may also double-click the list
+#' box and manually add names to the list.
+#' 
+#' More intelligence to be added...
+#' 
+#' @return Invisible \code{NULL}.
+#' @author Yihui Xie <\url{http://yihui.name}>
+#' @seealso \code{\link[R2WinBUGS]{bugs}}, \code{\link{bugs.options}}
+#' @keywords utilities
+#' @export
+#' @examples
+#' 
+#' \dontrun{
+#' 
+#' iBUGS()
+#' 
+#' }
+#' 
+iBUGS = function() {
     options(guiToolkit = "RGtk2")
-    if (.Platform$OS.type == "unix")
-        galert("iBUGS does not support *nix yet!", "Warning",
-            delay = 5)
-    g = ggroup(horizontal = FALSE, container = gwindow("iBUGS - Intelligent (Open|Win)BUGS Interface"))
+    auto = "No"
+    g = ggroup(horizontal = FALSE, container = gw0 <- gwindow("iBUGS - Intelligent (Open|Win)BUGS Interface"))
     g1 = ggroup(container = g, expand = TRUE)
+    if (.Platform$OS.type == "windows") {
+        g7 = gframe(container = g, text = "Program")
+        items = c("OpenBUGS", "WinBUGS", "JAGS")
+        rb = gradio(items, horizontal = TRUE, container = g7)
+	bugs.options(program = svalue(rb))
+        addHandlerClicked(rb, handler = function(h, ..) {
+	bugs.options(program = svalue(h$obj))
+        })
+    } else bugs.options(program = "JAGS")
     g2 = ggroup(container = g)
     txt = gtext("model\n{\n\t## likelihood\n\tfor (i in 1:N) {\n\t\t\n\t}\n\t## prior\n\n}",
         container = g1, wrap = FALSE, font.attr = c(family = "monospace",
@@ -40,10 +80,19 @@ iBUGS <- function() {
         ## other options
         g2 = glayout(container = ggroup(container = g), expand = TRUE,
             spacing = 2)
+        # JAGS can be auto-updated until converge using R2jags::autojags;
+	if (bugs.options("program") == "JAGS") {
+            g8 = gframe(container = g, text = "Auto-update until the model converges?")
+            items.auto = c("No", "Yes")
+            rb.auto = gradio(items.auto, horizontal = TRUE, container = g8)
+            addHandlerClicked(rb.auto, handler = function(h, ..) {
+                auto = svalue(h$obj)
+            })
+        }
         ## buttons
         g3 = ggroup(container = g)
-        g.data = gtable(data.frame(data = unlist(sapply(grep("^[^(package:)]",
-            search(), value = TRUE), ls))), multiple = TRUE,
+	g.data = gtable(data.frame(data = unlist(sapply(grep("^[^(package:)]", 
+            search(), value = TRUE), ls))), multiple = TRUE, 
             container = g1, expand = TRUE)
         svalue(g.data) = bugs.options("data")
         addHandlerMouseMotion(g.data, handler = function(h, ...) focus(h$obj))
@@ -83,6 +132,8 @@ iBUGS <- function() {
         })
         opt.names = setdiff(names(bugs.options()), c("data",
             "parameters.to.save"))
+	if (bugs.options("program") == "JAGS") opt.names = setdiff(opt.names, c("n.sims", "bin", "debug", "codaPkg", "bugs.directory", "program", "clearWD", "bugs.seed", "summary.only", "save.history", "over.relax", "model.name", "bugs.seed", "summary.only", "save.history", "over.relax", "model.name"))	
+	else opt.names = setdiff(opt.names, c("jags.seed", "refresh", "progress.bar"))
         for (i in 1:ceiling(length(opt.names)/3)) {
             for (j in 1:3) {
                 if (3 * i - (3 - j) <= length(opt.names)) {
@@ -105,33 +156,61 @@ iBUGS <- function() {
             }
         }
         gbutton("ok", container = g3, handler = function(h, ...) {
-            bugs.options(data = as.character(svalue(g.data)),
+	    bugs.options(data = as.character(svalue(g.data)), 
                 parameters.to.save = as.character(svalue(g.parameters.to.save)))
             dispose(gw)
+        })
+        gbutton("help", container = g3, handler = function(h, ...) {
+            gw1 = gwindow(paste("Help on ", ifelse(bugs.options("program") == "JAGS", "jags", 
+                "bugs")), visible = FALSE)
+            size(gw1) = c(500, 500)
+            g4 = ggroup(horizontal = FALSE, container = gw1)
+            g5 = ggroup(container = g4, expand = TRUE)
+            helpWidget = ghelp(container = g5, expand = TRUE)
+            visible(gw1) = TRUE
+            add(helpWidget, ifelse(bugs.options("program") == "JAGS", "R2jags::jags", "R2WinBUGS:::bugs"))
+            g6 = ggroup(container = g4)
+            gbutton("cancel", container = g6, handler = function(h, ...) {
+                dispose(gw1)
+            })
         })
         gbutton("cancel", container = g3, handler = function(h,
             ...) {
             dispose(gw)
         })
-        size(g1) = c(size(g1)[1], 200)
+        size(g1) = c(200, 200)
     })
     gbutton("Execute", container = g2, handler = function(h,
         ...) {
         writeLines(svalue(txt), bugs.options("model.file"))
-        assign(bugs.options("model.name"), with(bugs.options(),
-            {
-                bugs(data, if (!is.null(bugs.options("inits")))
-                  eval(parse(text = bugs.options("inits")))
-                else NULL, parameters.to.save, model.file, n.chains,
-                  n.iter, n.burnin, n.thin, n.sims, bin, debug,
-                  DIC, digits, codaPkg, bugs.directory, program,
-                  working.directory, clearWD, useWINE, WINE,
-                  newWINE, WINEPATH, bugs.seed, summary.only,
-                  save.history, over.relax)
-            }), envir = .GlobalEnv)
-        message(sprintf("(*) Returned values saved to the R object '%s';\n    you may play with '%s' now, e.g. plot(%s)",
-            bugs.options("model.name"), bugs.options("model.name"),
+        assign(bugs.options("model.name"), with(bugs.options(), {
+            if (bugs.options("program") == "JAGS") 
+                jags(data, if (!is.null(bugs.options("inits"))) 
+                  eval(parse(text = bugs.options("inits"))) else NULL, parameters.to.save, model.file, n.chains, n.iter, 
+                  n.burnin, n.thin, DIC, digits, working.directory = NULL, 
+                  jags.seed, refresh, progress.bar = "none")
+			else bugs(data, if (!is.null(bugs.options("inits"))) 
+                eval(parse(text = bugs.options("inits"))) else NULL, parameters.to.save, model.file, n.chains, n.iter, n.burnin, 
+                n.thin, n.sims, bin, debug, DIC, digits, codaPkg, bugs.directory, 
+                program, working.directory, clearWD, useWINE = FALSE, WINE = NULL, 
+                newWINE = FALSE, WINEPATH = NULL, bugs.seed, summary.only, 
+                save.history, over.relax)
+        }), envir = .GlobalEnv)
+        # working.directory and progress.bar are fixed for jags
+        if (bugs.options("program") == "JAGS" && auto == "Yes" && max(get(bugs.options("model.name"))$BUGSoutput$summary[, 
+            "Rhat"]) >= 1.1) 
+            assign(bugs.options("model.name"), autojags(get(bugs.options("model.name"))), 
+                envir = .GlobalEnv)
+        message(sprintf("(*) Returned values saved to the R object '%s';\n    you may play with it now, e.g. press the buttons of Print and Plot", 
             bugs.options("model.name")))
+    })
+    gbutton("Print", container = g2, handler = function(h, ...) {
+        if (exists(as.character(substitute(bugs.options("model.name"))))) 
+            print(get(bugs.options("model.name"))) else galert("Please execute a model first!", "Warning")
+    })
+    gbutton("Plot", container = g2, handler = function(h, ...) {
+        if (exists(as.character(substitute(bugs.options("model.name"))))) 
+            plot(get(bugs.options("model.name"))) else galert("Please execute a model first!", "Warning")
     })
     gbutton("Demo", container = g2, handler = function(h, ...) {
         if (isTRUE(gconfirm("I will overwrite the current model and show the demo. Do you want to continue?"))) {
@@ -159,4 +238,7 @@ iBUGS <- function() {
                 "iBUGS.pdf", package = "iBUGS")))
     })
     invisible(NULL)
+    gbutton("cancel", container = g2, handler = function(h, ...) {
+        dispose(gw0)
+    })
 }
